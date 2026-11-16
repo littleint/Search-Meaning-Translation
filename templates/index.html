@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Explore Lexicon — LinguaVault{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-8">
+    <!-- Top Editorial Header & Search Box -->
+    <div class="bg-white rounded-3xl p-6 sm:p-10 shadow-xs border border-[#E7E2D8]">
+        <div class="text-center max-w-lg mx-auto mb-8">
+            <span class="text-[11px] font-bold uppercase tracking-widest text-cognac-700 bg-cognac-50 border border-cognac-200/60 px-3 py-1 rounded-full">Editorial Lexicon</span>
+            <h1 class="text-3xl sm:text-4xl font-extrabold font-serif-title text-ink-900 tracking-tight mt-3">Search Meaning & Translation</h1>
+            <p class="text-ink-500 text-sm mt-2 font-sans">Definitions, pronunciations, synonyms, and translations in any language. Every inquiry is preserved in your private collection.</p>
+        </div>
+
+        <!-- Language Selectors -->
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-5 bg-[#FAF7F2] p-2.5 rounded-2xl border border-[#E7E2D8]">
+            <div class="flex items-center space-x-2 flex-1 min-w-[140px]">
+                <span class="text-[11px] font-bold text-ink-500 uppercase tracking-wider pl-2">From:</span>
+                <select id="source-lang" class="w-full bg-white border border-[#E7E2D8] text-ink-800 text-sm rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-cognac-600 font-medium">
+                    <option value="auto" selected>Auto-Detect</option>
+                    {% for lang in supported_languages %}
+                    <option value="{{ lang }}">{{ lang }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="button" onclick="swapLanguages()" title="Swap languages" class="p-2 rounded-xl text-ink-400 hover:text-ink-900 hover:bg-white transition shadow-xs border border-transparent hover:border-[#E7E2D8]">
+                <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+            </button>
+
+            <div class="flex items-center space-x-2 flex-1 min-w-[140px]">
+                <span class="text-[11px] font-bold text-ink-500 uppercase tracking-wider">To:</span>
+                <select id="target-lang" class="w-full bg-white border border-[#E7E2D8] text-ink-800 text-sm rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-cognac-600 font-medium">
+                    {% for lang in supported_languages %}
+                    <option value="{{ lang }}" {% if lang == default_target_lang %}selected{% endif %}>{{ lang }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Search Input Bar -->
+        <form id="search-form" onsubmit="handleSearch(event)" class="relative">
+            <div class="relative flex items-center">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    placeholder="Search a word, idiom, or inquiry (e.g. 'serendipity', 'ephemeral', 'break a leg')..." 
+                    required 
+                    autocomplete="off"
+                    class="w-full pl-5 pr-28 py-4 text-base sm:text-lg rounded-2xl border border-[#E7E2D8] bg-[#FAF7F2]/40 focus:bg-white focus:border-cognac-600 focus:ring-2 focus:ring-cognac-100 focus:outline-none transition text-ink-900 placeholder:text-ink-400 font-sans shadow-xs"
+                >
+                <div class="absolute right-2.5 flex items-center">
+                    <button 
+                        type="submit" 
+                        id="search-btn"
+                        class="px-5 py-2.5 bg-ink-900 hover:bg-ink-800 text-paper-50 font-semibold rounded-xl text-sm transition shadow-sm flex items-center space-x-1.5 active:scale-95"
+                    >
+                        <span>Look Up</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Curated Suggestions -->
+        <div class="mt-5 flex flex-wrap items-center gap-2 text-xs text-ink-500">
+            <span class="font-medium text-ink-400">Curated words:</span>
+            <button onclick="quickSearch('serendipity')" class="px-2.5 py-1 rounded-lg bg-[#FAF7F2] hover:bg-cognac-50 hover:text-cognac-800 font-medium border border-[#E7E2D8]/80 transition">serendipity</button>
+            <button onclick="quickSearch('ephemeral')" class="px-2.5 py-1 rounded-lg bg-[#FAF7F2] hover:bg-cognac-50 hover:text-cognac-800 font-medium border border-[#E7E2D8]/80 transition">ephemeral</button>
+            <button onclick="quickSearch('resilient')" class="px-2.5 py-1 rounded-lg bg-[#FAF7F2] hover:bg-cognac-50 hover:text-cognac-800 font-medium border border-[#E7E2D8]/80 transition">resilient</button>
+            <button onclick="quickSearch('saudade', 'Portuguese', 'English')" class="px-2.5 py-1 rounded-lg bg-[#FAF7F2] hover:bg-cognac-50 hover:text-cognac-800 font-medium border border-[#E7E2D8]/80 transition">saudade</button>
+            <button onclick="quickSearch('what is the meaning of break a leg?')" class="px-2.5 py-1 rounded-lg bg-[#FAF7F2] hover:bg-cognac-50 hover:text-cognac-800 font-medium border border-[#E7E2D8]/80 transition">"break a leg"</button>
+        </div>
+    </div>
+
+    <!-- Loading Skeleton Indicator -->
+    <div id="search-loading" class="hidden bg-white rounded-3xl p-8 border border-[#E7E2D8] shadow-xs animate-pulse space-y-6">
+        <div class="flex justify-between items-center">
+            <div class="space-y-2">
+                <div class="h-8 bg-stone-200 rounded-lg w-48"></div>
+                <div class="h-4 bg-stone-200 rounded w-28"></div>
+            </div>
+            <div class="h-9 bg-stone-200 rounded-xl w-32"></div>
+        </div>
+        <div class="h-20 bg-[#FAF7F2] rounded-2xl border border-[#E7E2D8]"></div>
+        <div class="space-y-3">
+            <div class="h-4 bg-stone-200 rounded w-3/4"></div>
+            <div class="h-4 bg-stone-200 rounded w-1/2"></div>
+        </div>
+    </div>
+
+    <!-- Active Result Card Container -->
+    <div id="result-container" class="hidden">
+        <!-- Rendered via JS -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/search.js"></script>
+{% endblock %}
