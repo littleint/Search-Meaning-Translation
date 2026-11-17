@@ -9,7 +9,7 @@
         <div class="text-center max-w-lg mx-auto mb-8">
             <span class="text-[11px] font-bold uppercase tracking-widest text-cognac-700 bg-cognac-50 border border-cognac-200/60 px-3 py-1 rounded-full">Editorial Lexicon</span>
             <h1 class="text-3xl sm:text-4xl font-extrabold font-serif-title text-ink-900 tracking-tight mt-3">Search Meaning & Translation</h1>
-            <p class="text-ink-500 text-sm mt-2 font-sans">Definitions, pronunciations, synonyms, and translations in any language. Every inquiry is preserved in your private collection.</p>
+            <p class="text-ink-500 text-xs sm:text-sm mt-1.5 font-sans">Definitions, pronunciations, synonyms, and translations in any language. Every inquiry is preserved in your private collection.</p>
         </div>
 
         <!-- Language Selectors -->
@@ -44,18 +44,19 @@
                 <input 
                     type="text" 
                     id="search-input" 
-                    placeholder="Search a word, idiom, or inquiry (e.g. 'serendipity', 'ephemeral', 'break a leg')..." 
+                    placeholder="Vedansh — Search a word, idiom, or phrase..." 
                     required 
                     autocomplete="off"
-                    class="w-full pl-5 pr-28 py-4 text-base sm:text-lg rounded-2xl border border-[#E7E2D8] bg-[#FAF7F2]/40 focus:bg-white focus:border-cognac-600 focus:ring-2 focus:ring-cognac-100 focus:outline-none transition text-ink-900 placeholder:text-ink-400 font-sans shadow-xs"
+                    class="w-full pl-4 sm:pl-5 pr-13 sm:pr-28 py-3 sm:py-3.5 text-base sm:text-lg rounded-2xl border border-[#E7E2D8] bg-[#FAF7F2]/40 focus:bg-white focus:border-cognac-600 focus:ring-2 focus:ring-cognac-100 focus:outline-none transition text-ink-900 placeholder:text-ink-400 font-sans shadow-xs"
                 >
-                <div class="absolute right-2.5 flex items-center">
+                <div class="absolute right-2 sm:right-2.5 flex items-center">
                     <button 
                         type="submit" 
                         id="search-btn"
-                        class="px-5 py-2.5 bg-ink-900 hover:bg-ink-800 text-paper-50 font-semibold rounded-xl text-sm transition shadow-sm flex items-center space-x-1.5 active:scale-95"
+                        class="w-9 h-9 sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 bg-ink-900 hover:bg-ink-800 text-paper-50 font-semibold rounded-xl text-sm transition shadow-sm flex items-center justify-center sm:space-x-1.5 active:scale-95"
+                        title="Search / Look Up"
                     >
-                        <span>Look Up</span>
+                        <span class="hidden sm:inline">Look Up</span>
                         <i data-lucide="arrow-right" class="w-4 h-4"></i>
                     </button>
                 </div>
