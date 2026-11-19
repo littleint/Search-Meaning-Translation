@@ -8,9 +8,9 @@ filtering vocabulary, inspecting word dossiers, toggling stars, and managing not
 
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from schemas import LookupRequest, NotesRequest
+from schemas import LookupRequest, NotesRequest, SaveWordRequest
 from database import (
-    save_or_update_word, get_user_vocabulary, get_vocab_item,
+    save_or_update_word, get_user_vocabulary, get_vocab_item, get_vocab_by_word,
     toggle_important, update_notes, delete_vocab_item, get_vocab_stats
 )
 from auth import get_current_user
@@ -19,10 +19,10 @@ from services.dictionary_manager import get_word_details
 router = APIRouter(prefix="/api", tags=["Vocabulary & Dictionary"])
 
 @router.post("/lookup")
-async def lookup_and_autosave(payload: LookupRequest, user: dict = Depends(get_current_user)):
+async def lookup_word(payload: LookupRequest, user: dict = Depends(get_current_user)):
     """
     Search definitions, synonyms, antonyms, and translations.
-    AUTOMATICALLY saves the word and all details to the authenticated user's private vault.
+    Does NOT auto-save. Returns search details and checks if already in vocabulary.
     """
     query = payload.query.strip()
     if not query:
@@ -34,13 +34,31 @@ async def lookup_and_autosave(payload: LookupRequest, user: dict = Depends(get_c
     # 1. Fetch linguistic & translation data (Groq AI with Fallback)
     word_details = await get_word_details(query, source_lang=source_lang, target_lang=target_lang)
 
-    # 2. Automatically save to private database for this user
-    saved_item = save_or_update_word(user["id"], word_details)
+    # 2. Check if already saved in this user's vocabulary
+    clean_word = word_details.get("clean_word", query).strip().lower()
+    existing = get_vocab_by_word(user["id"], clean_word, target_lang)
 
     return {
         "success": True,
-        "auto_saved": True,
-        "data": saved_item
+        "data": word_details,
+        "is_saved": bool(existing),
+        "vocab_id": existing["id"] if existing else None,
+        "is_important": bool(existing["is_important"]) if existing else False
+    }
+
+@router.post("/vocab/save")
+async def save_word_manually(payload: SaveWordRequest, user: dict = Depends(get_current_user)):
+    """
+    Explicitly save a searched word to the user's vocabulary vault.
+    Triggered only when the user clicks 'Save to Vocab'.
+    """
+    data_dict = payload.model_dump()
+    saved_item = save_or_update_word(user["id"], data_dict)
+    stats = get_vocab_stats(user["id"])
+    return {
+        "success": True,
+        "data": saved_item,
+        "stats": stats
     }
 
 @router.get("/vocab")

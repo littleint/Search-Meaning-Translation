@@ -305,6 +305,24 @@ def get_vocab_item(user_id: str, vocab_id: str) -> Optional[Dict[str, Any]]:
     finally:
         conn.close()
 
+def get_vocab_by_word(user_id: str, clean_word: str, target_lang: str) -> Optional[Dict[str, Any]]:
+    conn = get_db()
+    try:
+        with conn.cursor() as cursor:
+            sql = adapt_sql("SELECT * FROM vocabulary WHERE user_id = ? AND clean_word = ? AND target_lang = ?")
+            cursor.execute(sql, (user_id, clean_word.strip().lower(), target_lang))
+            row = cursor.fetchone()
+            if row:
+                item = dict(row)
+                item["meanings"] = json.loads(item["meanings"]) if item["meanings"] else []
+                item["synonyms"] = json.loads(item["synonyms"]) if item["synonyms"] else []
+                item["antonyms"] = json.loads(item["antonyms"]) if item["antonyms"] else []
+                item["is_important"] = bool(item["is_important"])
+                return item
+            return None
+    finally:
+        conn.close()
+
 def toggle_important(user_id: str, vocab_id: str) -> Optional[bool]:
     conn = get_db()
     try:

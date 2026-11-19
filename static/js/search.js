@@ -54,9 +54,11 @@ async function executeSearch(query) {
         }
 
         currentResult = json.data;
+        currentResult.id = json.vocab_id;
+        currentResult.is_saved = json.is_saved;
+        currentResult.is_important = json.is_important;
+
         renderResult(currentResult);
-        updateNavBadge();
-        showToast(`Preserved "${currentResult.clean_word || currentResult.word}" in your collection.`, 'success');
     } catch (err) {
         showToast(err.message, 'error');
     } finally {
@@ -73,6 +75,7 @@ function renderResult(data) {
     const sourceLang = data.source_lang || 'Detected';
     const targetLang = data.target_lang || 'English';
     const isImportant = data.is_important;
+    const isSaved = data.is_saved;
     const meanings = data.meanings || [];
     const synonyms = data.synonyms || [];
     const antonyms = data.antonyms || [];
@@ -174,11 +177,11 @@ function renderResult(data) {
                     ${phonetic ? `<div class="text-sm font-mono text-cognac-700 mt-1">${phonetic}</div>` : ''}
                 </div>
 
-                <!-- Star button & Auto-saved badge -->
+                <!-- Bookmark button & Save to Vocab button -->
                 <div class="flex items-center space-x-2.5">
                     <button 
-                        id="star-btn-${data.id}" 
-                        onclick="toggleStar('${data.id}')"
+                        id="star-btn" 
+                        onclick="toggleCurrentStar()"
                         class="px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 ${
                             isImportant 
                             ? 'bg-amber-50 border-amber-300 text-amber-800' 
@@ -186,13 +189,22 @@ function renderResult(data) {
                         }"
                     >
                         <i data-lucide="bookmark" class="w-3.5 h-3.5 ${isImportant ? 'fill-amber-600 text-amber-600' : ''}"></i>
-                        <span>${isImportant ? 'Important' : 'Bookmark'}</span>
+                        <span id="star-btn-text">${isImportant ? 'Important' : 'Bookmark'}</span>
                     </button>
 
-                    <div class="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-stone-100 text-ink-700 text-xs font-semibold border border-stone-200">
-                        <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i>
-                        <span>Preserved in Vault</span>
-                    </div>
+                    <!-- Explicit Save to Vocab Button -->
+                    <button 
+                        id="save-vocab-btn"
+                        onclick="handleSaveWord()"
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 ${
+                            isSaved 
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 cursor-default' 
+                            : 'bg-ink-900 text-paper-50 border-ink-900 hover:bg-ink-800 active:scale-95 cursor-pointer shadow-xs'
+                        }"
+                    >
+                        <i data-lucide="${isSaved ? 'check' : 'bookmark-plus'}" class="w-3.5 h-3.5 ${isSaved ? 'text-emerald-600' : ''}"></i>
+                        <span id="save-btn-text">${isSaved ? 'Saved in Vocab' : 'Save to Vocab'}</span>
+                    </button>
                 </div>
             </div>
 
@@ -229,9 +241,13 @@ function renderResult(data) {
 
             <!-- Footer info -->
             <div class="pt-4 border-t border-[#E7E2D8] flex justify-between items-center text-xs text-ink-400">
-                <span>Frequency: looked up <strong>${data.search_count || 1}</strong> time(s)</span>
+                <span id="card-save-status">
+                    ${isSaved 
+                        ? 'Saved in your personal vocabulary vault.' 
+                        : 'Word not saved yet. Click <strong>"Save to Vocab"</strong> to keep it.'}
+                </span>
                 <a href="/vocab" class="text-cognac-700 font-semibold hover:underline flex items-center space-x-1">
-                    <span>Review in My Vocab</span>
+                    <span>Go to My Vocab</span>
                     <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
                 </a>
             </div>
@@ -242,23 +258,88 @@ function renderResult(data) {
     lucide.createIcons({ root: container });
 }
 
-async function toggleStar(vocabId) {
+async function handleSaveWord() {
+    if (!currentResult) return;
+    if (currentResult.is_saved) {
+        showToast('Word is already saved in your vocabulary!', 'info');
+        return;
+    }
+    const saveBtn = document.getElementById('save-vocab-btn');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.classList.add('opacity-70');
+    }
     try {
-        const res = await fetch(`/api/vocab/${vocabId}/important`, { method: 'PATCH' });
+        const res = await fetch('/api/vocab/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(currentResult)
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.detail || 'Could not save word.');
+
+        currentResult.is_saved = true;
+        currentResult.id = json.data.id;
+        currentResult.is_important = json.data.is_important;
+
+        if (saveBtn) {
+            saveBtn.className = 'px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-emerald-50 text-emerald-800 border-emerald-200 cursor-default';
+            saveBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i><span id="save-btn-text">Saved in Vocab</span>`;
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('opacity-70');
+            lucide.createIcons({ root: saveBtn });
+        }
+
+        const footerStatus = document.getElementById('card-save-status');
+        if (footerStatus) {
+            footerStatus.innerHTML = `<span>Saved in your personal vocabulary vault.</span>`;
+        }
+
+        updateNavBadge();
+        showToast(`Saved "${currentResult.clean_word || currentResult.word}" to your Vocab!`, 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('opacity-70');
+        }
+    }
+}
+
+async function toggleCurrentStar() {
+    if (!currentResult) return;
+
+    // If word not saved yet, save it first and mark as important
+    if (!currentResult.is_saved) {
+        currentResult.is_important = true;
+        await handleSaveWord();
+        const starBtn = document.getElementById('star-btn');
+        if (starBtn) {
+            starBtn.className = 'px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-amber-50 border-amber-300 text-amber-800';
+            starBtn.innerHTML = `<i data-lucide="bookmark" class="w-3.5 h-3.5 fill-amber-600 text-amber-600"></i><span>Important</span>`;
+            lucide.createIcons({ root: starBtn });
+        }
+        return;
+    }
+
+    // If already saved, toggle on server
+    try {
+        const res = await fetch(`/api/vocab/${currentResult.id}/important`, { method: 'PATCH' });
         const data = await res.json();
         if (res.ok) {
-            const btn = document.getElementById(`star-btn-${vocabId}`);
-            if (btn) {
+            currentResult.is_important = data.is_important;
+            const starBtn = document.getElementById('star-btn');
+            if (starBtn) {
                 if (data.is_important) {
-                    btn.className = 'px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-amber-50 border-amber-300 text-amber-800';
-                    btn.innerHTML = `<i data-lucide="bookmark" class="w-3.5 h-3.5 fill-amber-600 text-amber-600"></i><span>Important</span>`;
+                    starBtn.className = 'px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-amber-50 border-amber-300 text-amber-800';
+                    starBtn.innerHTML = `<i data-lucide="bookmark" class="w-3.5 h-3.5 fill-amber-600 text-amber-600"></i><span>Important</span>`;
                     showToast('Bookmarked as Important', 'success');
                 } else {
-                    btn.className = 'px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-[#FAF7F2] border-[#E7E2D8] text-ink-700 hover:border-amber-300 hover:text-amber-700';
-                    btn.innerHTML = `<i data-lucide="bookmark" class="w-3.5 h-3.5"></i><span>Bookmark</span>`;
+                    starBtn.className = 'px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-[#FAF7F2] border-[#E7E2D8] text-ink-700 hover:border-amber-300 hover:text-amber-700';
+                    starBtn.innerHTML = `<i data-lucide="bookmark" class="w-3.5 h-3.5"></i><span>Bookmark</span>`;
                     showToast('Removed from Important', 'info');
                 }
-                lucide.createIcons({ root: btn });
+                lucide.createIcons({ root: starBtn });
             }
         }
     } catch (e) {
